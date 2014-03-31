@@ -2,6 +2,12 @@ import cql
 
 con = cql.connect(54.185.30.189, 9160, group6)
 cursor = con.cursor()
+
+# 1) movie by title
+# 2) ordered by IMDB rating
+# 3) top actors by number of movies
+
+
 #cursor.execute("CQL QUERY", {kw=Foo, kw2=Bar, etc...})
 
     # cursor.description  # None initially, list of N tuples that represent
