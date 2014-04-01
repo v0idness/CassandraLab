@@ -21,7 +21,7 @@ for i in open("../movies_dump.txt"):
 					first = False
 				else: 
 					genresstr = genresstr + ', ' + g
-				genres.append((g, title, line_splitted[2].strip(), y))
+				genres.append((g, title, line_splitted[2].strip()))
 		genresstr = genresstr + '}'
 		actorsstr = '{'
 		first = True
@@ -46,12 +46,14 @@ conn.execute("USE group6;")
 
 # Table creations
 conn.execute("CREATE TABLE movies_imdb (title varchar PRIMARY KEY, year int, rating float, genre varchar, actors varchar);")
-conn.execute("CREATE TABLE movies_imdb_2 (genre varchar, title varchar, rating float, year int, PRIMARY KEY((genre, title), rating, year));") 
-conn.execute("CREATE TABLE actors (actor varchar, counter_val int, partitioner int, PRIMARY KEY(partitioner, counter_val, actor));")
+conn.execute("CREATE TABLE movies_imdb_2 (genre varchar, title varchar, rating float, PRIMARY KEY(genre, rating, title));") 
+conn.execute("CREATE TABLE actors_top (actor varchar, counter_val int, partitioner int, PRIMARY KEY (partitioner, counter_val, actor));")
+conn.execute("CREATE TABLE actors (actor varchar PRIMARY KEY, counter_val int);")
 
-# # Add movies
-print "Adding %d movies" % len(upload)
 BATCH_SIZE = 10000
+
+# Add movies
+print "Adding %d movies" % len(upload)
 index = 0
 
 while index < len(upload) :
@@ -59,7 +61,7 @@ while index < len(upload) :
 	insert_movies = ["INSERT INTO movies_imdb (title, year, rating, genre, actors) VALUES ('%s', %r, %.1f, '%s', '%s')" \
 			% (t, y, float(r), g, a) for (y, t, r, g, a) in toupload]
 	query = "BEGIN BATCH %s \n APPLY BATCH;" % "\n".join(insert_movies)
-	open("queries1.txt","w").write(query)
+	#open("queries1.txt","w").write(query)
 	conn.execute(query)
 	print "Batch from", index, "to", index+BATCH_SIZE, "done"
 	index = index + BATCH_SIZE
@@ -70,10 +72,24 @@ index = 0
 
 while index < len(genres):
 	toupload = genres[index:(index+BATCH_SIZE)]
-	insert_movies = ["INSERT INTO movies_imdb_2 (genre, title, rating, year) VALUES ('%s', '%s', %.1f, %r)" \
-			% (g, t, float(r), y) for (g, t, r, y) in toupload]
+	insert_movies = ["INSERT INTO movies_imdb_2 (genre, title, rating) VALUES ('%s', '%s', %.1f)" \
+			% (g, t, float(r)) for (g, t, r) in toupload]
 	query = "BEGIN BATCH %s \n APPLY BATCH;" % "\n".join(insert_movies)
-	open("queries2.txt","w").write(query)
+	#open("queries2.txt","w").write(query)
+	conn.execute(query)
+	print "Batch from", index, "to", index+BATCH_SIZE, "done"
+	index = index + BATCH_SIZE
+
+# Add actors
+print "Adding %d actors_top" % len(actors)
+index = 0
+
+while index < len(actors):
+	toupload = itertools.islice(actors.items(), index, (index+BATCH_SIZE))
+	insert_actors = ["INSERT INTO actors_top (actor, counter_val, partitioner) VALUES ('%s', %r, 1)" \
+			% (k, v) for k, v in toupload]
+	query = "BEGIN BATCH %s \n APPLY BATCH;" % "\n".join(insert_actors)
+	#open("queries3.txt","w").write(query)
 	conn.execute(query)
 	print "Batch from", index, "to", index+BATCH_SIZE, "done"
 	index = index + BATCH_SIZE
@@ -84,10 +100,9 @@ index = 0
 
 while index < len(actors):
 	toupload = itertools.islice(actors.items(), index, (index+BATCH_SIZE))
-	insert_actors = ["INSERT INTO actors (actor, counter_val, partitioner) VALUES ('%s', %r, 1)" \
+	insert_actors = ["INSERT INTO actors (actor, counter_val) VALUES ('%s', %r)" \
 			% (k, v) for k, v in toupload]
 	query = "BEGIN BATCH %s \n APPLY BATCH;" % "\n".join(insert_actors)
-	open("queries3.txt","w").write(query)
 	conn.execute(query)
 	print "Batch from", index, "to", index+BATCH_SIZE, "done"
 	index = index + BATCH_SIZE
